@@ -11,8 +11,8 @@ class RedisClient {
     return await this.client.get(key);
   }
 
-  async setValue(key: string, value: string): Promise<void> {
-    await this.client.set(key, value);
+  async setValue(key: string, value: string, expiry = 86400): Promise<void> {
+    await this.client.set(key, value, "EX", expiry);
   }
 }
 

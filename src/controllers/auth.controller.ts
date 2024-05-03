@@ -13,8 +13,12 @@ export default class AuthController {
         return res.status(400).send("Email is required");
       }
       const token = this.jwtHelper.generateAuthToken(email);
-      redisClient.setValue(token, email);
-      res.status(200).send("Please check your email for verification link");
+      redisClient.setValue(token, email, 600);
+      res
+        .status(200)
+        .send(
+          "Please check your email for verification link. The link will expire in 10 mintues."
+        );
     } catch (err) {
       console.error("Error sending message: ", err);
       res.status(500).send("Error sending message");
@@ -39,6 +43,7 @@ export default class AuthController {
       ) {
         return res.status(401).send("Invalid token");
       }
+      redisClient.setValue(storedEmail, "verified");
       res.status(200).send("Email verified");
     } catch (err) {
       console.error("Error verifying email: ", err);
