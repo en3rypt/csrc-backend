@@ -36,6 +36,56 @@ services:
     volumes:
       - ./redis-data:/data
 
+  mq:
+    hostname: "mailmq"
+    image: rabbitmq:management
+    container_name: mail-rabbitmq
+    volumes:
+      - "db:/var/lib/rabbitmq/mnesia/"
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 5s
+      timeout: 20s
+      retries: 5
+
+  pub:
+    image: psgecampus/mail-publisher
+    restart: on-failure
+    environment:
+      - PORT=8080
+      - CLIENT_ID=675518225398-sdu9glg7i88e0r7tq4f4cdmvj9v7et99.apps.googleusercontent.com
+      - CLIENT_SECRET=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
+      - REFRESH_TOKEN=1//04Icjw1VE-6O9CgYIARAAGAQSNwF-L9Irlj12b__QjGGD_3eE2A0NrN4CubE84yxHKwin6P1AgnfAGMmM7rOE3X2e3Dy9AdJpNwg
+      - FROM_EMAIL=ecampus@psgtech.ac.in
+      - TZ=Asia/Kolkata
+      - AMQP_HOST=amqp://mq
+      - AMQP_QUEUE=mails
+    ports:
+      - "9999:8080"
+    depends_on:
+      mq:
+        condition: service_healthy
+    container_name: mail-publisher
+
+  sub:
+    image: psgecampus/mail-subscriber
+    restart: on-failure
+    environment:
+      - PORT=8080
+      - CLIENT_ID=675518225398-sdu9glg7i88e0r7tq4f4cdmvj9v7et99.apps.googleusercontent.com
+      - CLIENT_SECRET=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
+      - REFRESH_TOKEN=1//04Icjw1VE-6O9CgYIARAAGAQSNwF-L9Irlj12b__QjGGD_3eE2A0NrN4CubE84yxHKwin6P1AgnfAGMmM7rOE3X2e3Dy9AdJpNwg
+      - FROM_EMAIL=ecampus@psgtech.ac.in
+      - TZ=Asia/Kolkata
+      - AMQP_HOST=amqp://mq
+      - AMQP_QUEUE=mails
+    depends_on:
+      mq:
+        condition: service_healthy
+    container_name: mail-subscriber
   app:
     build:
       context: ./
@@ -58,3 +108,6 @@ services:
       - .env
     expose:
       - 3000
+volumes:
+  db:
+    driver: local

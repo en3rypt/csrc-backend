@@ -1,14 +1,10 @@
 import { Client } from "minio";
 import config from "../config";
 
-export class MinioService {
-  private readonly minioClient: Client;
-  private readonly bucketName: string;
-  constructor() {
-    this.minioClient = new Client(config.minioConfig);
-    this.bucketName = process.env.MINIO_BUCKET_NAME ?? "local-bucket";
-  }
+const minioClient: Client = new Client(config.minioConfig);
+const bucketName: string = process.env.MINIO_BUCKET_NAME ?? "local-bucket";
 
+export class MinioService {
   private async streamToBuffer(stream: any): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       const chunks: any[] = [];
@@ -24,13 +20,13 @@ export class MinioService {
     contentLength: number,
     contentType: string
   ) {
-    const bucketExists = await this.minioClient.bucketExists(this.bucketName);
+    const bucketExists = await minioClient.bucketExists(bucketName);
     if (!bucketExists) {
-      await this.minioClient.makeBucket(this.bucketName, "india");
+      await minioClient.makeBucket(bucketName, "india");
     }
 
-    await this.minioClient.putObject(
-      this.bucketName,
+    await minioClient.putObject(
+      bucketName,
       fileName,
       fileBuffer,
       contentLength,
@@ -39,12 +35,9 @@ export class MinioService {
   }
 
   public async getFile(fileName: string) {
-    // return await this.minioClient.getObject(this.bucketName, fileName);
+    // return await minioClient.getObject(bucketName, fileName);
     try {
-      const dataStream = await this.minioClient.getObject(
-        this.bucketName,
-        fileName
-      );
+      const dataStream = await minioClient.getObject(bucketName, fileName);
       return await this.streamToBuffer(dataStream);
     } catch (error) {
       console.error("Error retrieving file from Minio:", error);
@@ -53,7 +46,7 @@ export class MinioService {
   }
 
   public async removeFile(bucketName: string, fileName: string) {
-    await this.minioClient.removeObject(bucketName, fileName);
+    await minioClient.removeObject(bucketName, fileName);
   }
 
   public async generatePresignedUrl(
@@ -61,30 +54,26 @@ export class MinioService {
     fileName: string,
     expiry: number
   ) {
-    return await this.minioClient.presignedGetObject(
-      bucketName,
-      fileName,
-      expiry
-    );
+    return await minioClient.presignedGetObject(bucketName, fileName, expiry);
   }
 
   public async listObjects(bucketName: string) {
-    return await this.minioClient.listObjects(bucketName);
+    return await minioClient.listObjects(bucketName);
   }
 
   public async listBuckets() {
-    return await this.minioClient.listBuckets();
+    return await minioClient.listBuckets();
   }
 
   public async removeBucket(bucketName: string) {
-    return await this.minioClient.removeBucket(bucketName);
+    return await minioClient.removeBucket(bucketName);
   }
 
   public async makeBucket(bucketName: string) {
-    return await this.minioClient.makeBucket(bucketName);
+    return await minioClient.makeBucket(bucketName);
   }
 
   public async bucketExists(bucketName: string) {
-    return await this.minioClient.bucketExists(bucketName);
+    return await minioClient.bucketExists(bucketName);
   }
 }

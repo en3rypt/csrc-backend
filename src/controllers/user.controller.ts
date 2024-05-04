@@ -3,22 +3,18 @@ import redisClient from "../utils/redis";
 import { DBService } from "../services/db.service";
 import { MinioService } from "../services/minio.service";
 import { UserService } from "../services/user.service";
+import { EmailService } from "../services/email.service";
 
+const userService = new UserService();
+const dbService = new DBService();
+const minioService = new MinioService();
+const emailService = new EmailService();
 export default class UserController {
-  private readonly bucketName;
-  private readonly dbService;
-  private readonly minioService;
-  private readonly userService;
-  constructor() {
-    this.bucketName = process.env.MINIO_BUCKET_NAME ?? "local-submissions";
-    this.dbService = new DBService();
-    this.minioService = new MinioService();
-    this.userService = new UserService();
-  }
   public send = async (req: Request, res: Response) => {
     try {
-      const { name, phone, email, subject, message, file } = req.body;
-      const resp = await this.userService.sendContactFormSubmission(
+      const { name, phone, email, subject, message } = req.body;
+      const file = req.file?.buffer.toString("base64");
+      const resp = await userService.sendContactFormSubmission(
         name,
         phone,
         email,
@@ -26,6 +22,12 @@ export default class UserController {
         message,
         file
       );
+      await emailService.sendEmail(
+        process.env.ADMIN_EMAIL ?? "",
+        "New Contact Form Submission",
+        `Name: ${name}<br>Phone: ${phone}<br>Email: ${email}<br>Subject: ${subject}<br>Message: ${message}`
+      );
+
       res.status(200).send(resp);
     } catch (err) {
       console.error("Error sending message: ", err);
@@ -35,7 +37,7 @@ export default class UserController {
 
   async getAllSubmissions(req: Request, res: Response) {
     try {
-      const submissions = await this.userService.getContactFormSubmissions();
+      const submissions = await userService.getContactFormSubmissions();
       res.status(200).send(submissions);
     } catch (err) {
       console.error("Error getting messages: ", err);
@@ -49,7 +51,7 @@ export default class UserController {
       if (!email) {
         return res.status(400).send("Email is required");
       }
-      const submissions = await this.dbService.getContactFormSubmissionsByEmail(
+      const submissions = await dbService.getContactFormSubmissionsByEmail(
         email as string
       );
       res.status(200).send(submissions);
@@ -66,22 +68,21 @@ export default class UserController {
         return res.status(400).send("ID is required");
       }
 
-      const submission = await this.dbService.getContactFormSubmissionByUUID(
-        uuid
-      );
+      const submission = await dbService.getContactFormSubmissionByUUID(uuid);
       if (!submission) {
         return res.status(404).send("Submission not found");
       }
       if (!submission.fileURL) {
         return res.status(404).send("Submission does not have a file");
       }
-      const file = await this.minioService.getFile(submission.fileURL);
+      const fileName: string = submission.fileURL.split("/").pop() ?? "";
+      const file = await minioService.getFile(fileName);
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename=${submission.fileURL}`
+        `attachment; filename="${fileName}"`
       );
       res.setHeader("Content-Type", "application/pdf");
-      res.send(file);
+      res.status(200).send(file);
     } catch (err) {
       console.error("Error getting messages: ", err);
       res.status(500).send("Error getting messages");

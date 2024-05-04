@@ -18,7 +18,7 @@ export class UserService {
     email: string,
     subject: string,
     message: string,
-    file: string
+    file: string | undefined
   ) {
     try {
       let fileURL = "";
@@ -26,7 +26,13 @@ export class UserService {
         throw new Error("All fields are required");
       }
       if (file) {
-        const fileName = `${email}-${Date.now()}.pdf`;
+        const formattedDate = new Date().toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+
+        const fileName = `${email}_${formattedDate}.pdf`;
         const fileBuffer = Buffer.from(file, "base64");
         await this.minioService.uploadFile(
           fileName,
