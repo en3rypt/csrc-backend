@@ -13,6 +13,11 @@ export default class UserController {
   public send = async (req: Request, res: Response) => {
     try {
       const { name, phone, email, subject, message } = req.body;
+      //check if email is verified
+      const isEmailVerified = await redisClient.getValue(email);
+      if (isEmailVerified !== "verified") {
+        return res.status(401).send("Email is not verified");
+      }
       const file = req.file?.buffer.toString("base64");
       const resp = await userService.sendContactFormSubmission(
         name,
@@ -22,13 +27,21 @@ export default class UserController {
         message,
         file
       );
+
+      let emailResp = "";
+      if (resp !== "") {
+        emailResp = `Name: ${name}<br>Phone: ${phone}<br>Email: ${email}<br>Subject: ${subject}<br>Message: ${message}<br>File: <a href="${process.env.BASE_URL}/submission/file/${resp}">Download</a>`;
+      } else {
+        emailResp = `Name: ${name}<br>Phone: ${phone}<br>Email: ${email}<br>Subject: ${subject}<br>Message: ${message}`;
+      }
+
       await emailService.sendEmail(
         process.env.ADMIN_EMAIL ?? "",
         "New Contact Form Submission",
-        `Name: ${name}<br>Phone: ${phone}<br>Email: ${email}<br>Subject: ${subject}<br>Message: ${message}`
+        emailResp
       );
 
-      res.status(200).send(resp);
+      res.status(200).send("Message submitted successfully");
     } catch (err) {
       console.error("Error sending message: ", err);
       res.status(500).send("Error sending message");
@@ -55,6 +68,25 @@ export default class UserController {
         email as string
       );
       res.status(200).send(submissions);
+    } catch (err) {
+      console.error("Error getting messages: ", err);
+      res.status(500).send("Error getting messages");
+    }
+  }
+
+  async downloadSubmissionByFilename(req: Request, res: Response) {
+    try {
+      let { fileName } = req.params;
+      if (!fileName) {
+        return res.status(400).send("Filename is required");
+      }
+      const file = await minioService.getFile(fileName);
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${fileName}"`
+      );
+      res.setHeader("Content-Type", "application/pdf");
+      res.status(200).send(file);
     } catch (err) {
       console.error("Error getting messages: ", err);
       res.status(500).send("Error getting messages");

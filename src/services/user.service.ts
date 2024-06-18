@@ -22,6 +22,7 @@ export class UserService {
   ) {
     try {
       let fileURL = "";
+      let fileName = "";
       if (!name || !phone || !email || !subject || !message) {
         throw new Error("All fields are required");
       }
@@ -32,7 +33,7 @@ export class UserService {
           day: "numeric",
         });
 
-        const fileName = `${email}_${formattedDate}.pdf`;
+        fileName = `${email}_${formattedDate}.pdf`;
         const fileBuffer = Buffer.from(file, "base64");
         await this.minioService.uploadFile(
           fileName,
@@ -52,7 +53,7 @@ export class UserService {
         message,
         fileURL,
       });
-      return "Message Successfully Sent";
+      return fileName;
     } catch (err) {
       console.error("Error sending message: ", err);
       throw new Error("Error sending message");

@@ -1,6 +1,8 @@
+import { EmailService } from "../services/email.service";
 import JWTHelper from "../utils/jwt.util";
 import redisClient from "../utils/redis";
 import { Request, Response } from "express";
+const emailService = new EmailService();
 export default class AuthController {
   private jwtHelper;
   constructor() {
@@ -13,6 +15,11 @@ export default class AuthController {
         return res.status(400).send("Email is required");
       }
       const token = this.jwtHelper.generateAuthToken(email);
+      await emailService.sendEmail(
+        process.env.ADMIN_EMAIL ?? "",
+        "Email Verification",
+        `Click <a href="${process.env.BASE_URL}/verify-email?token=${token}">here</a> to verify your email. The link will expire in 10 minutes.`
+      );
       redisClient.setValue(token, email, 600);
       res
         .status(200)

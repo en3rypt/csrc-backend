@@ -11,4 +11,8 @@ sendRouter.get(
   "/submission/download/:uuid",
   userController.downloadSubmissionFileByUUID
 );
+sendRouter.get(
+  "/submission/file/:fileName",
+  userController.downloadSubmissionByFilename
+);
 export default sendRouter;
